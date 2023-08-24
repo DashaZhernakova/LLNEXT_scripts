@@ -42,7 +42,7 @@ do
     
     tmp=${pheno##*HMO_}
     pheno_short=${tmp%_invr}
-    awk -v p=$pheno_short -v t=$tp 'BEGIN {FS=OFS="\t"}; {if (NR > 1 && $10 < 5e-8 && $6 > 50) print t, p, $0}' ${res_file}.fastGWA | sort -k12,12g > ${res_file}.fastGWA.5e-08.txt
+    awk -v p=$pheno_short -v t=$tp 'BEGIN {FS=OFS="\t"}; {if (NR > 1 && $10 < 5e-8) print t, p, $0}' ${res_file}.fastGWA | sort -k12,12g > ${res_file}.fastGWA.5e-08.txt
     gzip -f ${res_file}.fastGWA 
     
 done
