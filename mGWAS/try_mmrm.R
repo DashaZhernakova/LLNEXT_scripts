@@ -3,6 +3,8 @@ library(car)
 setwd("/Users/Dasha/work/UMCG/data/NEXT/mbQTLs/")
 
 taxa <- infant_taxa_SGB_all_filt_CLR_quant
+taxa <- infant_taxa_SGB_all_filt_CLR_2
+taxa <- read.delim("data/infant_taxa_SGB_all_filt_CLR_zero_to_min.txt", header = F, check.names = F, as.is = T, sep = "\t")
 qtls <- read.delim("data/quant_all_species_and_timepoints.1e-05.srt.pos_clumped.txt", header = F, check.names = F, as.is = T, sep = "\t")
 
 geno <- as.data.frame(t(read.delim("data/snps_1e-5.genotypes.txt", as.is = T, sep = "\t", check.names = F, row.names = 1)))
@@ -10,7 +12,7 @@ ids <- row.names(geno)
 geno <- as.data.frame(sapply(geno, function(x) as.factor(as.character(x))))
 geno$"NEXT_ID" <- ids
 
-pdf("plots/mmrm_quant_examples_v2.pdf")
+pdf("plots/mmrm_quant_examples_v5.pdf")
 #results <- c("W2-Escherichia_coli-17:56518534", "M1-Streptococcus_parasanguinis-5:52285098", "M1-Streptococcus_parasanguinis-4:189900854", "M2-Bifidobacterium_bifidum-8:13938718", "M3-Parabacteroides_distasonis-7:77836451", "M6-Bifidobacterium_bifidum-10:124514229", "M12-Phocaeicola_vulgatus-20:41719099")
 for (i in 1:nrow(qtls)){
   #res = results[1]
@@ -73,8 +75,8 @@ for (i in 1:nrow(qtls)){
     cat ("fitting mmrm\n")
     #mmrm_fit <- mmrm(species ~ age + I(age^2) +I(age^3) + snp_num*age + num_reads + dna_conc + us(Timepoint|NEXT_ID), data=merged, reml = F)
     #mmrm_fit_0 <- mmrm(species ~ snp_num + age + I(age^2) +I(age^3) + num_reads + dna_conc + us(Timepoint|NEXT_ID), data=merged, reml = F)
-    mmrm_fit <- mmrm(species ~ age + I(age^2) +I(age^3) + snp_num*age + num_reads + dna_conc + us(Timepoint|NEXT_ID), data=merged, reml = F)
-    mmrm_fit_0 <- mmrm(species ~ snp_num + age + I(age^2) +I(age^3) + num_reads + dna_conc + us(Timepoint|NEXT_ID), data=merged, reml = F)
+    mmrm_fit <- mmrm(species ~ age + I(age^2) +I(age^3) + snp_num*Timepoint + num_reads + dna_conc + us(Timepoint|NEXT_ID), data=merged, reml = F)
+    mmrm_fit_0 <- mmrm(species ~ snp_num + Timepoint + age + I(age^2) +I(age^3) + num_reads + dna_conc + us(Timepoint|NEXT_ID), data=merged, reml = F)
     
     ll_res <- run_likelihoodRatioTest(mmrm_fit_0, mmrm_fit)
     ll_p <- formatC(ll_res[2,5], digits = 3)
@@ -82,6 +84,7 @@ for (i in 1:nrow(qtls)){
   }, error=function(e) {ll_p = 1}) 
   
   if (as.numeric(ll_p) < 1e-6){
+    print ("Worked!")
     merged$tp_p <- factor(merged$tp_p, levels = tp_levels)
     p <- ggplot(merged, aes(x = snp, y = species)) + 
       geom_boxplot(alpha = 0.1, outlier.shape = NA) + 
@@ -89,8 +92,13 @@ for (i in 1:nrow(qtls)){
       facet_grid(. ~ tp_p) +
       ggtitle(paste0(snp, " - ", sp, "\nmmrm LL test P = ", ll_p)) + 
       theme_bw()
-    
+    p2 <- ggplot(merged, aes(x = Timepoint, y = species, color = snp)) + geom_boxplot(alpha = 0.4) +
+      scale_color_manual(values = c("#F65C00", "#006DB3", "#00A072")) + theme_bw() +
+      ggtitle(paste0("mmrm LL test P = ", ll_p)) +
+      ylab(sp) + labs(color = snp)
     print(p)
+    print(p2)
+    #ggplot(merged, aes(x = snp, y = species, color = Timepoint)) + geom_boxplot(alpha = 0.4) + geom_smooth(aes(x = snp_num, y = species, color = Timepoint), method = 'lm', formula = y ~ x, alpha = 0.2) 
   }
 }
 dev.off()

@@ -1,4 +1,59 @@
-ml PLINK
+module load BCFtools
+module load PLINK
+
+#
+# 1. Convert vcf to plink
+#
+for chr in `seq 1 22`
+do
+ plink2 \
+ --vcf /groups/umcg-llnext/tmp01/data/imputed/rawdata/LLnextv2_2920merged23122022.vcfs/${chr}.pbwt_reference_impute.vcf.gz \
+ --extract-if-info "INFO > 0.5" \
+ --make-bed --out ${chr}.info_filtered
+ 
+ awk 'BEGIN {FS=OFS="\t"}; {if ($2 == ".") $2 = $1 ":" $4; print $0}' ${chr}.info_filtered.bim > ${chr}.info_filtered.bim.tmp
+ mv ${chr}.info_filtered.bim.tmp ${chr}.info_filtered.bim
+ 
+ awk 'BEGIN {FS=OFS="\t"}; {$2 = $1 ":" $4; print $0}' ${chr}.info_filtered.bim > ${chr}.info_filtered.bim.tmp
+ mv ${chr}.info_filtered.bim.tmp ${chr}.info_filtered.bim
+ 
+done
+
+
+#
+# 2. Merge per chromosome plink files
+#
+
+rm merge_list.txt
+for chr in `seq 1 22`
+do
+ echo "${chr}.info_filtered" >> merge_list.txt
+done
+
+module load PLINK/1.9-beta6-20190617
+plink --merge-list merge_list.txt --make-bed --out all_chr.info_filtered
+
+cat all_chr.filtered-merge.missnp > multiallelic_SNPs.txt
+
+for chr in `seq 1 22`
+do
+ plink --bfile ${chr}.info_filtered \
+ --exclude multiallelic_SNPs.txt \
+ --make-bed --out ${chr}.info_filtered.nodup
+done
+
+rm merge_list.txt
+for chr in `seq 1 22`
+do
+ echo "${chr}.info_filtered.nodup" >> merge_list.txt
+done
+
+plink --merge-list merge_list.txt --make-bed --out all_chr.info_filtered
+
+
+#
+# 3. Extract mothers and filter SNPs
+#
 
 plink2 \
     --bfile all_chr.info_filtered \
@@ -7,26 +62,3 @@ plink2 \
     --make-bed \
     --out all_chr.mothers.with_rel.flt
     
-
-#
-# Make GRMs for fastGWA
-#
-cd /groups/umcg-llnext/tmp01/umcg-dzhernakova/HMO_GWAS/genotypes
-ln -s /groups/umcg-llnext/tmp01/umcg-dzhernakova/genotypes/all_chr.mothers.with_rel.flt.bed
-ln -s /groups/umcg-llnext/tmp01/umcg-dzhernakova/genotypes/all_chr.mothers.with_rel.flt.bim
-ln -s /groups/umcg-llnext/tmp01/umcg-dzhernakova/genotypes/all_chr.mothers.with_rel.flt.fam
-
-
-
-# make GRMs for GCTA
-
-gcta=/groups/umcg-lifelines/tmp01/projects/dag3_fecal_mgs/umcg-dzhernakova/SV_GWAS/v2//tools/gcta-1.94.1-linux-kernel-3-x86_64/gcta-1.94.1
-grm=GRM/mothers_flt_pruned
-mkdir GRM
-
-plink2 --bfile all_chr.mothers.with_rel.flt --indep-pairwise 250 50 0.2 --out tmp_pruning
-$gcta --bfile all_chr.mothers.with_rel.flt  --extract tmp_pruning.prune.in  --make-grm --out $grm
-$gcta --grm $grm --make-bK-sparse 0.05 --out ${grm}_sparse 
-$gcta --bfile all_chr.mothers.with_rel.flt --extract tmp_pruning.prune.in --make-grm-gz --out ${grm}.text
-
-rm tmp.pruning*

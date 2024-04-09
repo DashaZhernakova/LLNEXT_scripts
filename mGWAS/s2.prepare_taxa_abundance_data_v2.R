@@ -108,10 +108,27 @@ infant_taxa_SGB_filt_binary <- infant_taxa_SGB_filt_binary[row.names(infant_taxa
 infant_taxa_SGB_all_filt_CLR_quant <- infant_taxa_SGB_all_filt_CLR
 infant_taxa_SGB_all_filt_CLR_quant[infant_taxa_SGB_filt_binary == 0] <- NA
 
+# Convert values that were 0 pre-CLR to their  mean value after CLR
+infant_taxa_SGB_all_filt_CLR_2 <- infant_taxa_SGB_all_filt_CLR
+for (sgb_n in 1:ncol(infant_taxa_SGB_all_filt_CLR)){
+  mean_of_zeros <- mean(infant_taxa_SGB_all_filt_CLR[which(infant_taxa_SGB_filt[,sgb_n] == 0), sgb_n])
+  min_nonzero <- min(infant_taxa_SGB_all_filt_CLR[which(infant_taxa_SGB_filt[,sgb_n] != 0), sgb_n])
+  
+  new_val <- min(mean_of_zeros, (min_nonzero - 1))
+  infant_taxa_SGB_all_filt_CLR_2[which(infant_taxa_SGB_filt[,sgb_n] == 0), sgb_n] <- new_val
+}
+
+write.table(infant_taxa_SGB_all_filt_CLR, file = "infant_taxa_SGB_all_filt_CLR.txt", sep = "\t", quote = F, col.names = NA)
+write.table(infant_taxa_SGB_filt_binary, file = "infant_taxa_SGB_filt_binary.txt", sep = "\t", quote = F, col.names = NA)
+write.table(infant_taxa_SGB_all_filt_CLR_quant, file = "infant_taxa_SGB_all_filt_CLR_quant.txt", sep = "\t", quote = F, col.names = NA)
+write.table(infant_taxa_SGB_all_filt_CLR_2, file = "infant_taxa_SGB_all_filt_CLR_zero_to_min.txt", sep = "\t", quote = F, col.names = NA)
+
+
+
 hist(infant_taxa_SGB_all_filt_CLR[,"Faecalibacterium_prausnitzii.t__SGB15316_group"], breaks = 100)
 hist(infant_taxa_SGB_all_filt_CLR_quant[,"Faecalibacterium_prausnitzii.t__SGB15316_group"], breaks = 100)
 hist(infant_taxa_SGB_filt_binary[,"Faecalibacterium_prausnitzii.t__SGB15316_group"], breaks = 100)
-
+hist(infant_taxa_SGB_all_filt_CLR_2[,"Faecalibacterium_prausnitzii.t__SGB15316_group"], breaks = 100)
 
 
 # write per timepoint tables
